@@ -1,0 +1,16 @@
+CXX ?= g++
+CFLAGS =`pkg-config --cflags opencv`
+LIBS = `pkg-config --libs opencv`  -L../../lib/gcc-4.4.3/
+#SHARELIBDIR= -L../../../lib/gcc-4.4.3/
+INCLUDE= -I./include
+
+all:main
+main:Camera.o
+	$(CXX) $(CFLAGS)  -o main Camera.o main.cpp  $(LIBS)   $(INCLUDE)   -lMVSDK
+
+Camera.o:Camera.cpp Camera.h
+	g++ -c -fpic Camera.cpp -o Camera.o $(LIBS)   $(INCLUDE)   -lMVSDK
+
+clean:
+	rm -f *.o 
+	rm -f main 

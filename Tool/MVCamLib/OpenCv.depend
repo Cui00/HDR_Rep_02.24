@@ -1,0 +1,89 @@
+# depslib dependency file v1.0
+1392279592 source:/home/mindvision/mindvision/mindvision/mindvision_develop/src/demo/OpenCv/main.cpp
+	"opencv2/core/core.hpp"
+	"opencv2/highgui/highgui.hpp"
+	<stdio.h>
+
+1391487660 /usr/local/include/opencv2/core/core.hpp
+	"opencv2/core/types_c.h"
+	"opencv2/core/version.hpp"
+	<limits.h>
+	<algorithm>
+	<cmath>
+	<cstddef>
+	<complex>
+	<map>
+	<new>
+	<string>
+	<vector>
+	<sstream>
+	"opencv2/core/operations.hpp"
+	"opencv2/core/mat.hpp"
+
+1392698388 /usr/local/include/opencv2/core/types_c.h
+	<assert.h>
+	<stdlib.h>
+	<string.h>
+	<float.h>
+	<stdint.h>
+	<intrin.h>
+	<emmintrin.h>
+	<fastmath.h>
+	<math.h>
+	<ipl.h>
+	<ipl/ipl.h>
+	"tegra_round.hpp"
+	"emmintrin.h"
+
+1396409726 /usr/local/include/opencv2/core/version.hpp
+
+1386127366 /usr/local/include/opencv2/core/operations.hpp
+	<string.h>
+	<limits.h>
+	<ext/atomicity.h>
+	<bits/atomicity.h>
+	<limits>
+
+1389324926 /usr/local/include/opencv2/core/mat.hpp
+	<limits.h>
+	<string.h>
+
+1384335864 /usr/local/include/opencv2/highgui/highgui.hpp
+	"opencv2/core/core.hpp"
+	"opencv2/highgui/highgui_c.h"
+
+1395718204 /usr/local/include/opencv2/highgui/highgui_c.h
+	"opencv2/core/core_c.h"
+
+1393997244 /usr/local/include/opencv2/core/core_c.h
+	"opencv2/core/types_c.h"
+
+1459837776 source:/usr/local/mvux_camera_x86/demo/OpenCvZHZ/main.cpp
+	"opencv2/core/core.hpp"
+	"opencv2/highgui/highgui.hpp"
+	<stdio.h>
+
+1461911855 source:/usr/local/mvux_camera_x86/demo/OpenCvLJB/Camera.cpp
+	"Camera.h"
+
+1461911510 /usr/local/mvux_camera_x86/demo/OpenCvLJB/Camera.h
+	"CameraApi.h"
+	"opencv2/core/core.hpp"
+	"opencv2/highgui/highgui.hpp"
+	<stdio.h>
+
+1453357251 /usr/local/mvux_camera_x86/include/CameraApi.h
+	"CameraDefine.h"
+	"CameraStatus.h"
+
+1453357251 /usr/local/mvux_camera_x86/include/CameraDefine.h
+	"CameraStatus.h"
+
+1453357251 /usr/local/mvux_camera_x86/include/CameraStatus.h
+
+1461913973 source:/usr/local/mvux_camera_x86/demo/OpenCvLJB/main.cpp
+	"opencv2/core/core.hpp"
+	"opencv2/highgui/highgui.hpp"
+	<stdio.h>
+	<iostream>
+

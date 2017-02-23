@@ -1,0 +1,47 @@
+一：运行调用迈得威视相机的程序，需要sudo权限
+
+二：设置迈得威视相机使用环境
+1、将libMVSDK.so文件拷贝到目录/usr/lib/下；
+2、相机第一次使用，需要在window系统下，设置固定IP，以及相机昵称；
+3、电脑需设置好相机对应但不一样的固定IP；
+
+三：打开相机
+可用CameraMV/MVCamParameters.py或者linux/mvux_camera/GTK_Demo/GTK——Demo（需要有GTK环境）
+
+四：MV初始化流程
+1、from MVCam_py import MVCam
+2、初始化类MVCam1 = MVCam()
+3、先枚举相机信息MVCam1.EnumerateDevice()
+4、根据名字初始化相机hCam = MVCam1.Init(‘Cam2’)，返回相机ID号给hCam
+
+5、可设置参数（具体请参考CameraMV/Camera.cpp和CameraMV/include/CameraApi.h）
+（参数设置范围仅供参考，具体范围视相机而准）
+（1）MVCam1.SetAeState(hCam,False) 手动曝光
+（2）SetAeTarget(hCam,50) 自动曝光目标值
+（3）MVCam1.SetExposureTime(hCam,60000) 曝光时间
+（4）MVCam1.SetAnalogGain(hCam,1) 图像模拟增益
+（5）MVCam1.SetImageResolution(hCam,1280,720) 分辨率（最大1280*960）
+（6）MVCam1.SetLutMode(hCam,0) 设置相机的查表变换模式LUT模式（由伽马和对比度参数动态生成LUT表、预设的LUT表、用户自定的LUT表）
+（7）MVCam1.SetGamma(hCam,50) Gamma值（0-255）
+（8）MVCam1.SetContrast(hCam,150) 对比度（0-255）
+（9）MVCam1.SetWbMode(hCam,True) 设置手/自动白平衡（用此功能之前先测相机是否可用）
+（10）MVCam1.SetClrTempMode(hCam,2) 设置白平衡时使用的色温模式（自动，预设和自定义，建议用自定义）
+（11）MVCam1.SetUserClrTempGain(hCam,100,100,100) 自定义色温模式下的数字增益（0-399，0到4倍）
+（12）MVCam1.SetPresetClrTemp(hCam,2) 指定预设色温模式（白平衡预设模式下，设置色温模式）
+（13）MVCam1.SetGain(hCam,200,100,255) 设置图像的数字增益（0-255）
+（14）MVCam1.SetOnceWB(hCam) 在手动白平衡模式下，调用该函数会进行一次白平衡使所设参数生效。 生效的时间为接收到下一帧图像数据时。
+（15）MVCam1.SetSaturation(hCam,100) 饱和度（0-255）
+（16）MVCam1.SetMonochrome(hCam,True) 彩色转黑白
+（17）MVCam1.SetInverse(hCam,True) 颜色反转
+（18）MVCam1.SetNoiseFilter(hCam,False) 降噪使能（不可用）
+（19）MVCam1.SetSharpness(hCam,10) 锐化参数（0-255）
+
+6、MVCam1.Play(hCam) 开始接收来自相机发送的图像
+7、MVCam1.getImage(hCam,1000) 获取照片，1000为获取超时时间（ms）
+8、MVCam1.Pause(hCam)或MVCam1.Stop(hCam)，暂停/停止相机，释放带宽
+9、MVCam1.UnInit(hCam) 反初始化相机
+
+五：补充说明
+1、使用多线程时，要是某线程使用getImage()函数并返回None，需要一定延时才能继续调用getImage()函数，否则相机不断获取图片失败可能会严重堵塞其他线程
+
+

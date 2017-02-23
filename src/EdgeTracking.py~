@@ -1,0 +1,17 @@
+#__author__ = 'gimbu'
+#coding:utf-8
+import cv2
+import numpy as np
+pj_path = "../"
+import sys
+sys.path.append('../')
+from lib.MVCam_py import MVCam
+CamName_list = ['cam4']
+
+Cam0 = MVCam()
+Cam0.EnumerateDevice()
+hCam = Cam0.Init(CamName_list[0])
+print hCam
+Cam0.SetAeState(hCam, True)
+Cam0.SetAeTarget(hCam, 50)
+
