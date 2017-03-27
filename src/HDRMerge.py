@@ -15,79 +15,69 @@ import cProfile
 import re
 
 LDR_SIZE = 256
-def TringleWeights():
-    w = np.zeros((LDR_SIZE, ), dtype="float32")
-    half = LDR_SIZE / 2
+def GaussianWeights(mu=127.5, sig=50):
+    """
+    :Description: to generate a gaussian weights
+    :param mu:  mu
+    :param sig: sig
+    :return w_256x: weights array
+    """
+    w_256x = np.zeros((LDR_SIZE, ), dtype="float32")
     for i in xrange(LDR_SIZE):
-        if i < half:
-            w[i] = float(i+1)
-        elif i >= half and i < 254:
-            w[i] = float(LDR_SIZE - i)
-        else:
-            w[i] = 2
-    return w
+            # left = 1./(np.sqrt(2.*np.pi)*sig)
+            left = 128
+            right = np.exp(-(i - mu) * (i - mu) / (2 * sig * sig))
+            w_256x[i] = left * right
+    return w_256x
 
-def GaussianFun(x, mu, sig):
-    # left = 1./(np.sqrt(2.*np.pi)*sig)
-    left = 128
-    right = np.exp(-(x - mu) * (x - mu) / (2 * sig * sig))
-    return left * right
-
-def GaussianWeights():
-    w = np.zeros((LDR_SIZE, ), dtype="float32")
-    for i in xrange(LDR_SIZE):
-            w[i] = GaussianFun(i, 127.5, 50)
-    return w
-
-def GB_Calibrate(path, filename):
-    arg_list = fit.loadYaml(path + filename)
-    img_name_list = arg_list["img_names"]
-    time_list = arg_list["times"]
+def GB_Calibrate(images, times, samples=70, random=False):
+    """
+    :Description: to calibrate CRF curve
+    :param images: image list
+    :param times: time list
+    :param samples: samples point count
+    :param random: whether samples random
+    :return: response_256x1x3, CRF array
+    """
     w = GaussianWeights()
-    gamma = 50.0
-    times = np.array(time_list, dtype="float32")
-    img_list = []
-    # n_img = len(img_name_list) 优选即
-    n_img = 2
-    for i in xrange(n_img):
-        #RGB
-        # img = cv2.imread("../image/test_img/"+img_name_list[i])
-        img = cv2.imread("../image/avr_img1x1/"+img_name_list[i])
-        img_list.append(img)
-    n_chn = img_list[0].shape[2]
+    gamma = 10.0
+    images = np.array(images, dtype="uint8")
+    times = np.array(times, dtype="float32")
+    n_img = len(images)
+    n_chn = images[0].shape[2]
     img_channel_list = []
     for i in xrange(n_chn):
         tmp = []
         for j in xrange(n_img):
-            img_channel = cv2.split(img_list[j])[i]
+            img_channel = cv2.split(images[j])[i]
             tmp.append(img_channel)
         img_channel_list.append(tmp)
-
-    n_samples = 30
-    img_cols = img_list[0][1]
-    img_rows = img_list[0][0]
+    img_shape = img_list[0].shape
+    img_cols = img_shape[1]
+    img_rows = img_shape[0]
     sample_points_list = []
-    if True:
-        for i in xrange(n_samples):
-            r = np.random.randint(0, 1024)
-            c = np.random.randint(0, 1280)
+
+    #set random situation.
+    if random == True:
+        for i in xrange(samples):
+            r = np.random.randint(0, img_rows)
+            c = np.random.randint(0, img_cols)
             sample_points_list.append((r, c))
+    if random == False:
+        x_points = int(np.sqrt(samples * (img_cols) / img_rows))
+        y_points = samples / x_points
+        n_samples = x_points * y_points
+        step_x = img_cols / x_points
+        step_y = img_rows / y_points
+        r = step_x / 2
+        for j in xrange(y_points):
+            rr = r + j * step_y
+            c = step_y / 2
+            for i in xrange(x_points):
+                cc = c + i * step_x
+                sample_points_list.append((rr, cc))
 
-    # if True:
-    #     sample_points_list = []
-    #     x_points = int(np.sqrt(70 * img_cols / img_rows))
-    #     y_points = samples / x_points
-    #     step_x = img_cols / x_points
-    #     step_y = img_rows / y_points
-    #     r = step_x / 2
-    #     c = step_y / 2
-    #     for j in xrange(y_points):
-    #         r = r + j * step_y
-    #         for i in xrange(x_points):
-    #             c = c + i * step_x
-    #             sample_points_list.append((r, c))
-
-
+    #svd solve response curve.
     response_list = []
     for z in xrange(n_chn):
         eq = 0
@@ -111,19 +101,26 @@ def GB_Calibrate(path, filename):
             A[eq, i+2] = gamma * w[i]
             eq += 1
         _, response = cv2.solve(A, B, flags=cv2.DECOMP_SVD)
-        # just a exposure lum.
-        response = cv2.exp(response)
-        response = response[:256]
-        response_list.append(response)
-    response_array = cv2.merge(response_list)
-    response_array = response_array.reshape(256, 3)
-    showSaveData(response_array, "hdr_response_gamma10.txt")
-    #need return 256x3 nparray.
-    return response_array
 
-def showSaveData(_response_array, txt_name):
-    np.savetxt('../text/'+txt_name, _response_array, fmt='%.2f',)
-    _response_array = np.transpose(_response_array)
+        # just from ln(lum) convert to lum.
+        response = cv2.exp(response)
+        response_256x1 = response[:256]
+        response_list.append(response_256x1)
+    response_256x1x3 = cv2.merge(response_list)
+    response_256x3 = response_256x1x3.reshape(256, 3)
+    showSaveData(response_256x3, "hdr_response_gamma10.txt")
+    #need return 256x3 nparray.
+    return response_256x1x3
+
+def showSaveData(_response_256x3, filename):
+    """
+    :Description: showSaveData, show and save CRF curve data
+    :param _response_256x3: CRF array
+    :param filename: filename want to save
+    :return None:
+    """
+    np.savetxt('../text/'+filename, _response_256x3, fmt='%.2f',)
+    _response_array = np.transpose(_response_256x3)
     x = np.array(xrange(256))
     plt.figure(1)
     ax1 = plt.subplot(311)
@@ -137,68 +134,74 @@ def showSaveData(_response_array, txt_name):
     plt.plot(x, _response_array[2], linewidth=2, color="r")
     plt.show()
 
-
-
-def GB_mergeHDR(path, filename, response_256x3):
-    arg_list = fit.loadYaml(path + filename)
-    img_list = []
-    img_name_list = arg_list["img_names"]
-    n_img = len(img_name_list)
-    for i in xrange(n_img):
-        tmp = cv2.imread("../image/avr_img1x1/"+img_name_list[i])
-        # tmp = cv2.imread("../image/test_img/"+img_name_list[i])
-        img_list.append(tmp)
-
-    time_list = arg_list["times"]
-    times = np.array(time_list, dtype="float32")
+def GB_mergeHDR(images, times, _response_256x1x3):
+    """
+    :Description: use images, times, and CRF to merge HDRI
+    :param images: image list
+    :param times: times list
+    :param _response_256x1x3: CRF array
+    :return hdr_img: HDRI(lux_img)
+    """
     weights = GaussianWeights()
-    # weights = np.ones((256,), dtype="float32")
-
-    response_256x1x3 = response_256x3.reshape((256, 1, 3))
-    log_response = np.log(response_256x1x3)
+    images = np.array(images, dtype="uint8")
+    times = np.array(times, dtype="float32")
+    n_img = len(images)
+    n_chn = images[0].shape[2]
+    # response_256x1x3 = _response_256x3.reshape((256, 1, 3))
+    log_response = np.log(_response_256x1x3)
     log_time = np.log(times)
-    channels = img_list[0].shape[2]
-
-    shape = img_list[0].shape
-    result = np.zeros(shape, dtype="float32")
-    #list result_split
-    result_split_list = cv2.split(result)
-    weight_sum = np.zeros(shape[:2], dtype="float32")
+    # log_hdr_img channel list
+    hdr_chn_list = [0, 0, 0]
+    img_avr_w_sum = np.zeros(images[0].shape[:2], dtype="float32")
     for i in xrange(n_img):
-        splitted = cv2.split(img_list[i])
-        w = np.zeros(shape[:2], dtype="float32")
-        for splitted_cn in splitted:
-            splitted_cn = cv2.LUT(splitted_cn, weights)
-            w += splitted_cn
+        src_chn_list = cv2.split(images[i])
+        img_avr_w = np.zeros(images[0].shape[:2], dtype="float32")
+        for cn in xrange(n_chn):
+            img_cn_w = cv2.LUT(src_chn_list[cn], weights)
+            img_avr_w += img_cn_w
         #第n张图3个通道的平均权值图像
-        w /= channels
-        response_img = cv2.LUT(img_list[i], log_response)
-        splitted = cv2.split(response_img)
-        for cn in xrange(channels):
-            #w:图片的平均权值 splitted[cn]:通道的log_response log_time[i]:图片的log_time.
-            result_split_list[cn] += cv2.multiply(w, splitted[cn] - log_time[i])
+        img_avr_w /= n_chn
+        #一张图的log_response(log(lum))
+        response_img = cv2.LUT(images[i], log_response)
+        response_chn_list = cv2.split(response_img)
+        for chn in xrange(n_chn):
+            #w:图片的平均权值 response_chn_list[chn]:通道的log_response log_time[i]:图片的log_time.
+            hdr_chn_list[chn] += cv2.multiply(img_avr_w, response_chn_list[chn] - log_time[i])
             #全部图的平均权值的和
-        weight_sum += w
+        img_avr_w_sum += img_avr_w
     #全部图的平均权值的和的倒数
-    weight_sum = 1.0 / weight_sum
-    for cn in xrange(channels):
-        result_split_list[cn] = cv2.multiply(result_split_list[cn], weight_sum)
-    result = cv2.merge(result_split_list)
-    #lux
-    hdr_img = cv2.exp(result)
+    img_avr_w_sum = 1.0 / img_avr_w_sum
+    for cn in xrange(n_chn):
+        hdr_chn_list[cn] = cv2.multiply(hdr_chn_list[cn], img_avr_w_sum)
+    log_hdr_img = cv2.merge(hdr_chn_list)
+    #this is lux, 为什么和官方的数值有数量级的差别。
+    hdr_img = cv2.exp(log_hdr_img)
     return hdr_img
 
 def mapLuminance(src, lum, new_lum, saturation):
-    channels_list = cv2.split(src)
+    """
+    :param src: BGR img
+    :param lum: GRAY img
+    :param new_lum: map img
+    :param saturation: saturation
+    :return new_img: new img
+    """
+    chn_list = cv2.split(src)
     #following just best
-    for cn in xrange(len(channels_list)):
-        channels_list[cn] = cv2.multiply(channels_list[cn], 1.0/lum)
-        channels_list[cn] = cv2.pow(channels_list[cn], saturation)
-        channels_list[cn] = cv2.multiply(channels_list[cn], new_lum)
-    dst = cv2.merge(channels_list)
-    return dst
+    for cn in xrange(len(chn_list)):
+        chn_list[cn] = cv2.multiply(chn_list[cn], 1.0/lum)
+        chn_list[cn] = cv2.pow(chn_list[cn], saturation)
+        chn_list[cn] = cv2.multiply(chn_list[cn], new_lum)
+    new_img = cv2.merge(chn_list)
+    return new_img
 
-def GB_ToneMapping(path, filename, hdr_img):
+def GB_ToneMapping(hdr_img):
+    """
+    :param hdr_img: HDRI(lux img)
+    :return ldr_img: LDRI
+    """
+    path = "../text/"
+    filename = "multi_img_inform.yaml"
     arg_list = fit.loadYaml(path + filename)
     gamma = arg_list["gamma"]
     contrast = arg_list["contrast"]
@@ -213,7 +216,6 @@ def GB_ToneMapping(path, filename, hdr_img):
 
     gray_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     log_img = np.log(gray_img)
-    #todo list effect, verbose bilateral: validate 0 -> small -0.03 -> small map_img
     map_img = cv2.bilateralFilter(log_img, -1, sigma_color, sigma_space)
     minval, maxval, _, _ = cv2.minMaxLoc(map_img)
     scale = contrast / (maxval - minval)
@@ -223,30 +225,22 @@ def GB_ToneMapping(path, filename, hdr_img):
     #no problem!!
     img = img.clip(None, 1.0)
     img = img * 255
-    img = img.astype("uint8")
-    OutputPath = '../image/test_img/Gtonemap7.png'
-    cv2.imwrite(OutputPath, img)
-    cv2.imshow("window", img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    ldr_img = img.astype("uint8")
+    return ldr_img
 
 #todo: optimize the algorithm
-def GB_Fusion(path, filename):
+def GB_Fusion(images, fusion_img):
+    """
+    :param images: img list
+    :return fusion_img: fusion_img
+    """
+    path = "../text/"
+    filename = "multi_img_inform.yaml"
     arg_list = fit.loadYaml(path + filename)
-    img_name_list = arg_list["img_names"]
     wcon = arg_list["wcon"]
     wsat = arg_list["wsat"]
     wexp = arg_list["wexp"]
-    #read some images in img_list
-    img_list = []
-    InputPath = arg_list["InputPath"]
-    n_img = len(img_name_list)
-
-
-    for i in xrange(n_img):
-        tmp = cv2.imread(InputPath+img_name_list[i])
-        # tmp = cv2.cvtColor(tmp, cv2.COLOR_RGB2GRAY)
-        img_list.append(tmp)
+    n_img = len(images)
     #camera images both are [b, g, r] 3channels
     n_chn = img_list[0].shape[2]
     # n_chn = 1
@@ -352,13 +346,8 @@ def GB_Fusion(path, filename):
 
     dst_tmp = res_pyr[0]
     dst_tmp = dst_tmp * 255
-    dst = dst_tmp.astype("uint8")
-    OutputPath = arg_list["OutputPath"]
-    cv2.imwrite(OutputPath, dst)
-    cv2.namedWindow("window")
-    cv2.imshow("window", dst)
-    cv2.waitKey()
-    cv2.destroyWindow("window")
+    fusion_img = dst_tmp.astype("uint8")
+    return fusion_img
 
 
 
@@ -368,15 +357,34 @@ if __name__ == '__main__':
     pr.enable()
     path = "../text/"
     filename = "multi_img_inform.yaml"
+    arg_list = fit.loadYaml(path + filename)
+    img_input_path = arg_list["InputPath"]
+    img_output_path = arg_list["OutputPath"]
+    img_name_list = arg_list["img_names"]
+    time_list = arg_list["times"]
+    img_list = []
+    for i in xrange(len(img_name_list)):
+        img = cv2.imread(img_input_path+img_name_list[i])
+        img_list.append(img)
 
-    response_256x3 = GB_Calibrate(path, filename)
+    response_256x1x3 = GB_Calibrate(img_list, time_list)
     # 3.2.0 spend time 367ms
-    hdr_img = GB_mergeHDR(path, filename, response_256x3)
-    GB_ToneMapping(path, filename, hdr_img)
-    #spend time 491ms
-    # GB_Fusion(path, filename)
+    hdr_img = GB_mergeHDR(img_list, time_list, response_256x1x3)
+    ldr_img = GB_ToneMapping(hdr_img)
+    cv2.imwrite(img_output_path+"Gtonemap.png", ldr_img)
+    cv2.imshow("window", ldr_img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
-    cProfile.run('re.compile("GB_ToneMapping")', 'stats')
+    #spend time 491ms
+    fusion_img = GB_Fusion(path, filename)
+    cv2.imwrite(img_output_path+"Gexpfusion.png", fusion_img)
+    cv2.namedWindow("window")
+    cv2.imshow("window", fusion_img)
+    cv2.waitKey(0)
+    cv2.destroyWindow("window")
+
+    cProfile.run('re.compile("GB_Algorithm")', 'stats')
     pr.disable()
     pr.print_stats(sort='time')
     pass
