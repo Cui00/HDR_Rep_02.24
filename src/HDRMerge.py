@@ -229,7 +229,7 @@ def GB_ToneMapping(hdr_img):
     return ldr_img
 
 #todo: optimize the algorithm
-def GB_Fusion(images, fusion_img):
+def GB_Fusion(images):
     """
     :param images: img list
     :return fusion_img: fusion_img
@@ -242,9 +242,9 @@ def GB_Fusion(images, fusion_img):
     wexp = arg_list["wexp"]
     n_img = len(images)
     #camera images both are [b, g, r] 3channels
-    n_chn = img_list[0].shape[2]
+    n_chn = images[0].shape[2]
     # n_chn = 1
-    rows, cols = img_list[0].shape[0], img_list[0].shape[1]
+    rows, cols = images[0].shape[0], images[0].shape[1]
     shape = (rows, cols)
     #inittial the weights[]
     weights = []
@@ -253,9 +253,9 @@ def GB_Fusion(images, fusion_img):
         weights.append(tmp)
     weight_sum = np.zeros(shape, dtype="float32")
     #solve each image weight and solve weight_sum
-    for i in xrange(len(img_list)):
+    for i in xrange(len(images)):
         #normalize img make convergence speedup
-        img = img_list[i] / 255.0
+        img = images[i] / 255.0
         img = img.astype("float32")
         #convert to gray
         if n_chn == 3:
@@ -267,7 +267,7 @@ def GB_Fusion(images, fusion_img):
         contrast = abs(contrast)
         #
         mean = np.zeros(shape, dtype="float32")
-        splitted = cv2.split(img_list[i])
+        splitted = cv2.split(images[i])
         for img_cn in splitted:
             mean += img_cn
         mean /= n_chn
@@ -301,7 +301,7 @@ def GB_Fusion(images, fusion_img):
     maxlevel = int(np.log(min(rows, cols)) / np.log(2))
     #(maxlevel+1) images, following to solve the final pyramid.
     res_pyr = [0] * (maxlevel+1)
-    for i in xrange(len(img_list)):
+    for i in xrange(len(images)):
         img_pyr = [0] * (maxlevel+1)
         weight_pyr = [0] * (maxlevel+1)
         img = img_list[i] / 255.0
@@ -377,7 +377,7 @@ if __name__ == '__main__':
     cv2.destroyAllWindows()
 
     #spend time 491ms
-    fusion_img = GB_Fusion(path, filename)
+    fusion_img = GB_Fusion(img_list)
     cv2.imwrite(img_output_path+"Gexpfusion.png", fusion_img)
     cv2.namedWindow("window")
     cv2.imshow("window", fusion_img)
@@ -388,6 +388,7 @@ if __name__ == '__main__':
     pr.disable()
     pr.print_stats(sort='time')
     pass
+
 
 
 
