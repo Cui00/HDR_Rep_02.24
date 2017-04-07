@@ -18,14 +18,15 @@ import cProfile
 import re
 
 class Calibration(object):
-    def __init__(self):
+    def __init__(self, gamma, LDR_SIZE):
         """
         :Description: to initial a Calibration instance
+        :param gamma:  ldr_img lux level
         :param LDR_SIZE:  ldr_img lux level
-        :param intensity_weight_256x_: intensity weight
         :return: Calibration instance
         """
-        self.__LDR_SIZE = 256
+        self.__gamma = gamma
+        self.__LDR_SIZE = LDR_SIZE
         self.__intensity_weight_256x_ = self._gnrGaussianWeights(mu=127.5, sig=50)
 
     def _gnrGaussianWeights(self, mu=127.5, sig=50):
@@ -58,7 +59,7 @@ class Calibration(object):
         assert len(images) == len(times), "images length should be same as times"
         LDR_SIZE = self.__LDR_SIZE
         w = self.__intensity_weight_256x_.copy()
-        gamma = 10.0
+        gamma = self.__gamma
         images = np.array(images, dtype="uint8")
         times = np.array(times, dtype="float32")
         n_img = len(images)
@@ -136,7 +137,7 @@ class Calibration(object):
         """
         response_256x1x3 = self.camera_response_256x1x3.copy()
         response_256x3 = response_256x1x3.reshape(256, 3)
-        np.savetxt('../text/'+filename, response_256x3, fmt='%.2f',)
+        np.savetxt('../other/'+filename, response_256x3, fmt='%.2f',)
         _response_array = np.transpose(response_256x3)
         x = np.array(xrange(256))
         plt.figure(1)
@@ -431,8 +432,8 @@ class HdrFusion(object):
 if __name__ == '__main__':
     pr = cProfile.Profile()
     pr.enable()
-    path = "../text/"
-    filename = "multi_img_inform.yaml"
+    path = "../other/"
+    filename = "HdrConfig.yaml"
     arg_list = fit.loadYaml(path + filename)
     img_input_path = arg_list["InputPath"]
     img_output_path = arg_list["OutputPath"]
@@ -444,17 +445,19 @@ if __name__ == '__main__':
         images.append(img)
 
     # new: spend time 258ms
-    gamma = arg_list["gamma"]
+    cali_gamma = arg_list["cali_gamma"]
+    LDR_SIZE = arg_list["LDR_SIZE"]
+    merge_gamma = arg_list["merge_gamma"]
     contrast = arg_list["contrast"]
     saturation = arg_list["saturation"]
     sigma_space = arg_list["sigma_space"]
     sigma_color = arg_list["sigma_color"]
-    clb = Calibration()
+    clb = Calibration(cali_gamma, LDR_SIZE)
     camera_response_256x1x3 = clb.process(images, times)
     clb.showSaveData("hdr_response_gamma10.txt")
-    hdr = HdrMerge(camera_response_256x1x3,
-                   gamma, contrast, saturation, sigma_space, sigma_color)
-    ldr_img = hdr.process(images, times)
+    hdr_merge = HdrMerge(camera_response_256x1x3,
+                   merge_gamma, contrast, saturation, sigma_space, sigma_color)
+    ldr_img = hdr_merge.process(images, times)
     cv2.imwrite(img_output_path+"HdrMerge.png", ldr_img)
     cv2.imshow("window", ldr_img)
     cv2.waitKey(0)
@@ -464,8 +467,8 @@ if __name__ == '__main__':
     wcon = arg_list["wcon"]
     wsat = arg_list["wsat"]
     wexp = arg_list["wexp"]
-    HDR = HdrFusion(wcon, wsat, wexp)
-    fusion_img = HDR.process(images)
+    hdr_fusion = HdrFusion(wcon, wsat, wexp)
+    fusion_img = hdr_fusion.process(images)
     cv2.imwrite(img_output_path+"HdrFusion.png", fusion_img)
     cv2.namedWindow("window")
     cv2.imshow("window", fusion_img)

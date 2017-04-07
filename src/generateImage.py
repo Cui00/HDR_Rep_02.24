@@ -36,7 +36,7 @@ def fun0():
 def fun1(img_name):
     img = cv2.imread(img_name)
     data = img.reshape(1024, 1280*3)
-    np.savetxt('../text/intensity', data, fmt='%i',)
+    np.savetxt('../other/intensity', data, fmt='%i',)
 
 if __name__ == "__main__":
     # fun0()

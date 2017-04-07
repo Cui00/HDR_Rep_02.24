@@ -1,0 +1,27 @@
+InputPath: "../image/test_img/"
+OutputPath: '../image/res_img/'
+
+img_names: ["5ms_45_test.bmp", "26ms_45_test.bmp", "51ms_45_test.bmp"]
+times: [0.005, 0.026, 0.051]
+
+#img_names: ["_10ms_.png", "_130ms_.png", "_170ms_.png", "_210ms_.png", "_290ms_.png"]
+#times: [0.01, 0.13, 0.17, 0.21, 0.29]
+
+cali_gamma: 10.0
+LDR_SIZE: 256
+
+#merge HDR parameters
+merge_gamma: 1.2
+contrast: 4.0
+saturation: 0
+sigma_space: 2.0
+sigma_color: 2.0
+
+#fusion HDR parameters
+wcon: 1.0
+wsat: 1.0
+wexp: 0.0
+
+
+
+

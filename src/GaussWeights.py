@@ -18,6 +18,7 @@ def gaussian(x, mu, sig):
     right = np.exp(-(x - mu) * (x - mu) / (2 * sig * sig))
     return left * right
 if __name__ == "__main__":
+    print cv2.getBuildInformation()
     for mu, sig in [(127.5, 50)]:
         plt.plot(np.linspace(0, 256, 256), gaussian(np.linspace(0, 256, 256), mu, sig))
     plt.show()
